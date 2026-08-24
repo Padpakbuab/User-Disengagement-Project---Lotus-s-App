@@ -33,7 +33,7 @@ This repository outlines the data requirements, entity relationships, and behavi
 
 ## Derived Behavioral Feature Definitions
 
-| Feature Name | Category | Plain Math Formula | Underlying GA4 Events | What It Means (Simple Explanation) |
+| Feature Name | Category | Plain Math Formula | Underlying GA4 Events | What It Means |
 | :--- | :--- | :--- | :--- | :--- |
 | **Engagement Decay Ratio** | Navigation & Activity | `(Screen Views in 7d / 7) / (Screen Views in 30d / 30)` | `screen_view` | Compares recent daily browsing to the monthly average. Score $< 1.0$ means the user is opening and browsing the app less frequently. |
 | **Browse Breadth** | Navigation & Activity | `(Product Views in 7d + List Views in 7d) / Total Sessions in 7d` | `view_item`, `view_item_list`, `session_start` | Shows how deeply a user browses per visit. Low numbers mean they only open the app briefly and leave without looking at products. |
