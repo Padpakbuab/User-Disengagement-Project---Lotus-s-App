@@ -33,69 +33,22 @@ This repository outlines the data requirements, entity relationships, and behavi
 
 ## Derived Behavioral Feature Definitions
 
-```python
-# 1. Digital Activity & Engagement Velocity
-engagement_decay_ratio = (
-    (count('screen_view', window='7d') / 7.0) / 
-    ((count('screen_view', window='30d') / 30.0) + 1e-5)
-)
-browse_breadth_7d = (
-    (count('view_item', window='7d') + count('view_item_list', window='7d')) / 
-    (count('session_start', window='7d') + 1e-5)
-)
-
-# 2. Purchase Funnel & Cart Velocity
-cart_abandonment_rate_30d = (
-    1.0 - (count('purchase', window='30d') / (count('add_to_cart', window='30d') + 1e-5))
-)
-cart_purge_ratio_30d = (
-    (count('remove_from_cart', window='30d') + count('trash_icon', window='30d')) / 
-    (count('add_to_cart', window='30d') + 1e-5)
-)
-checkout_dropoff_velocity_7d = (
-    count('checkout_coupon_leave', window='7d') / 
-    (count('cart_proceed_to_checkout', window='7d') + 1e-5)
-)
-checkout_stall_rate_7d = (
-    1.0 - (count('purchase', window='7d') / (count('cart_proceed_to_checkout', window='7d') + 1e-5))
-)
-refund_propensity_30d = (
-    count('refund', window='30d') / (count('purchase', window='30d') + 1e-5)
-)
-
-# 3. Loyalty, Coins & Promotion Dynamics
-coin_voucher_utilization_rate_30d = (
-    count('redeem_coins_confirm', window='30d') / 
-    (count('coupon_apply', window='30d') + 1e-5)
-)
-coin_redemption_velocity_30d = (
-    count('redeem_coins_confirm', window='30d') / 
-    (count('enable_use_lotuss_point', window='30d') + 1e-5)
-)
-coupon_abandonment_rate_30d = (
-    (count('checkout_coupon_leave', window='30d') + count('coupon_cancel', window='30d')) / 
-    (count('checkout_coupon_select', window='30d') + 1e-5)
-)
-
-# 4. Push & In-App Notification Receptivity
-notification_receptivity_ratio_7d = (
-    count('notification_open', window='7d') / 
-    (count('notification_receive', window='7d') + 1e-5)
-)
-push_dismiss_ratio_7d = (
-    count('notification_dismiss', window='7d') / 
-    (count('notification_receive', window='7d') + 1e-5)
-)
-in_app_banner_dismiss_rate_30d = (
-    (count('fiam_dismiss', window='30d') + count('firebase_in_app_message_dismiss', window='30d')) / 
-    (count('fiam_impression', window='30d') + count('firebase_in_app_message_impression', window='30d') + 1e-5)
-)
-
-# 5. App Stability & Crash Telemetry
-app_exception_rate_30d = (
-    count('app_exception', window='30d') / 
-    (count('session_start', window='30d') + 1e-5)
-)
+| Feature Name | Category | Mathematical / Logic Formula | Underlying GA4 Events | Behavioral Interpretation |
+| :--- | :--- | :--- | :--- | :--- |
+| **Engagement Decay Ratio** | Navigation & Activity | $\frac{\text{screen\_view}_{7d} \,/\, 7}{(\text{screen\_view}_{30d} \,/\, 30) + \epsilon}$ | `screen_view` | Ratio $< 1.0$ indicates an active drop-off in daily browsing volume compared to historical baseline. |
+| **Browse Breadth** | Navigation & Activity | $\frac{\text{view\_item}_{7d} + \text{view\_item\_list}_{7d}}{\text{session\_start}_{7d} + \epsilon}$ | `view_item`, `view_item_list`, `session_start` | Measures exploration depth; shallow opens with low item views signal passive disengagement. |
+| **Cart Abandonment Rate** | Purchase Funnel | $1 - \left(\frac{\text{purchase}_{30d}}{\text{add\_to\_cart}_{30d} + \epsilon}\right)$ | `purchase`, `add_to_cart` | Spikes when high purchase intent fails to convert into completed orders over a 30-day window. |
+| **Cart Purge Ratio** | Purchase Funnel | $\frac{\text{remove\_from\_cart}_{30d} + \text{trash\_icon}_{30d}}{\text{add\_to\_cart}_{30d} + \epsilon}$ | `remove_from_cart`, `trash_icon`, `add_to_cart` | High ratio signals hesitation, pricing friction, or out-of-stock items encountered in cart. |
+| **Checkout Drop-off Velocity** | Purchase Funnel | $\frac{\text{checkout\_coupon\_leave}_{7d}}{\text{cart\_proceed\_to\_checkout}_{7d} + \epsilon}$ | `checkout_coupon_leave`, `cart_proceed_to_checkout` | Captures users backing out during coupon application at final checkout step. |
+| **Checkout Stall Rate** | Purchase Funnel | $1 - \left(\frac{\text{purchase}_{7d}}{\text{cart\_proceed\_to\_checkout}_{7d} + \epsilon}\right)$ | `purchase`, `cart_proceed_to_checkout` | Measures immediate 7-day payment drop-offs after initiating the checkout flow. |
+| **Refund Propensity** | Purchase Funnel | $\frac{\text{refund}_{30d}}{\text{purchase}_{30d} + \epsilon}$ | `refund`, `purchase` | Spikes in refund activity strongly correlate with post-purchase dissatisfaction and app abandonment. |
+| **Coin-to-Voucher Utilization Rate** | Loyalty & Rewards | $\frac{\text{redeem\_coins\_confirm}_{30d}}{\text{coupon\_apply}_{30d} + \epsilon}$ | `redeem_coins_confirm`, `coupon_apply` | Measures whether a user actively uses My Lotus's Coins alongside standard promotional coupons. |
+| **Coin Redemption Velocity** | Loyalty & Rewards | $\frac{\text{redeem\_coins\_confirm}_{30d}}{\text{enable\_use\_lotuss_point}_{30d} + \epsilon}$ | `redeem_coins_confirm`, `enable_use_lotuss_point` | A declining ratio signals the user is no longer burning points/coins despite having points enabled. |
+| **Coupon Abandonment Rate** | Loyalty & Rewards | $\frac{\text{checkout\_coupon\_leave}_{30d} + \text{coupon\_cancel}_{30d}}{\text{checkout\_coupon\_select}_{30d} + \epsilon}$ | `checkout_coupon_leave`, `coupon_cancel`, `checkout_coupon_select` | Identifies coupon frustration where vouchers fail minimum spend rules or provide poor discounts. |
+| **Notification Receptivity Ratio** | Communication Fatigue | $\frac{\text{notification\_open}_{7d}}{\text{notification\_receive}_{7d} + \epsilon}$ | `notification_open`, `notification_receive` | Low/collapsing ratio signals push notification fatigue before the user disables permissions or uninstalls. |
+| **Push Dismiss Ratio** | Communication Fatigue | $\frac{\text{notification\_dismiss}_{7d}}{\text{notification\_receive}_{7d} + \epsilon}$ | `notification_dismiss`, `notification_receive` | High manual dismissal rate indicates push messaging irrelevance to the active user. |
+| **In-App Message Dismiss Rate** | Communication Fatigue | $\frac{\text{fiam\_dismiss}_{30d} + \text{firebase\_in\_app\_message\_dismiss}_{30d}}{\text{fiam\_impression}_{30d} + \text{firebase\_in\_app\_message\_impression}_{30d} + \epsilon}$ | `fiam_dismiss`, `fiam_impression`, `firebase_in_app_message_dismiss`, `firebase_in_app_message_impression` | Measures active banner/pop-up fatigue and reflexive in-app dismissals. |
+| **App Exception Rate** | Technical Friction | $\frac{\text{app\_exception}_{30d}}{\text{session\_start}_{30d} + \epsilon}$ | `app_exception`, `session_start` | Involuntary churn trigger capturing app crashes and client-side unhandled errors per session. |
 ```
 
 Idea: 
