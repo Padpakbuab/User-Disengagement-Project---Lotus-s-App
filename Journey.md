@@ -46,14 +46,14 @@ Indicators are categorized from highest direct signal strength to secondary and 
 
 | Feature Name | Priority Tier | Plain Math Formula | Underlying Events & Logs | What It Means (Simple Explanation) |
 | :--- | :--- | :--- | :--- | :--- |
-| **Engagement Decay Ratio** | Tier 1: Core | `(Screen Views in 7d / 7) / (Screen Views in 30d / 30)` | `screen_view` | Compares recent daily browsing to the monthly baseline. Values $< 1.0$ indicate declining app activity. |
-| **User Dissatisfaction Service Received Amount** | Tier 1: Core | `mixed criteria of bad services or cancelled` | `refund`, Order Status (`RETURNED`) | Spikes in returned items reflect product dissatisfaction and drive churn. |
-| **App Uninstall Flag** | Tier 1: Core | `1 if app uninstalled in 30d else 0` | `app_remove`, OS Uninstall Callback | Direct signal of churn; indicates the user deleted the app. |
-| **Checkout Stall Rate** | Tier 1: Core | `1 - (Purchases in 7d / Checkout Starts in 7d)` | `purchase`, `cart_proceed_to_checkout` | Percentage of recent checkout attempts that failed to finish as a completed order. |
-| **Spend Velocity (Order Value Drift)** | Tier 2: Secondary | `Total Spend in 7d / (Total Spend in 30d / 4)` | Order Info (`net_amount_paid`) | Measures whether weekly spending is slowing down compared to the user's monthly average. |
-| **Browse Breadth** | Tier 2: Secondary | `(Product Views in 7d + List Views in 7d) / Total Sessions in 7d` | `view_item`, `view_item_list`, `session_start` | Measures exploration depth per visit; shallow visits signal fading user interest. |
-| **Product Engagement Decay Ratio** | Tier 2: Secondary | `(Product Views in 7d + List Views in 7d) / T(Product Views in 30d + List Views in 30d) ` | `view_item`, `view_item_list`, `session_start` | Measures exploration  shallow visits signal fading user interest. |
-| **App Exception Rate** | Tier 3: Edge Case | `Crashes & App Errors in 30d / Total Sessions in 30d` | `app_exception`, `session_start` | Measures crash frequency per visit, identifying technical app instability. |
+| **Engagement Decay Ratio** | Tier 1: Core | `(Screen Views in 7d / 7) / (Screen Views in 30d / 30)` | `screen_view` | Compares recent daily browsing to the monthly baseline. Values $< 1.0$ indicate declining overall app activity. |
+| **User Dissatisfaction Service Received Amount** | Tier 1: Core | `Count of (Refunds + Returns + Failed Deliveries + CS Complaints in 30d)` | `refund`, Order Status (`RETURNED`, `FAILED`), CS Tickets | Quantifies the total volume of negative service experiences and order failures that trigger brand churn. |
+| **App Uninstall Flag** | Tier 1: Core | `1 if app uninstalled in 30d else 0` | `app_remove`, OS Uninstall Callback | Direct behavioral signal indicating the customer has deleted the application. |
+| **Checkout Stall Rate** | Tier 1: Core | `1 - (Purchases in 7d / Checkout Starts in 7d)` | `purchase`, `cart_proceed_to_checkout` | Percentage of checkout initiations over the last week that failed to convert into completed orders. |
+| **Spend Velocity (Order Value Drift)** | Tier 2: Secondary | `Total Spend in 7d / (Total Spend in 30d / 4)` | Order Info (`net_amount_paid`) | Tracks spending acceleration or slowdown relative to the customer's average 30-day weekly baseline. |
+| **Browse Breadth** | Tier 2: Secondary | `(Product Views in 7d + List Views in 7d) / Total Sessions in 7d` | `view_item`, `view_item_list`, `session_start` | Measures exploration depth per visit; shallow opens with low item views signal passive disengagement. |
+| **Product Engagement Decay Ratio** | Tier 2: Secondary | `((Product Views in 7d + List Views in 7d) / 7) / ((Product Views in 30d + List Views in 30d) / 30)` | `view_item`, `view_item_list` | Compares daily catalog browsing volume in the past week against the 30-day baseline to detect intent drop-off. |
+| **App Exception Rate** | Tier 3: Edge Case | `Crashes & App Errors in 30d / Total Sessions in 30d` | `app_exception`, `session_start` | Measures error and crash frequency per session, isolating involuntary technical friction. |
 
 ## 4. LightGBM Model Implementation Guide
 
