@@ -31,7 +31,7 @@ This document outlines the testing strategy, operational roadmap, data schema, a
 ## 2. Data Table Preview
 
 | user_id | snapshot_date | days_since_last_session | engagement_decay_ratio | cart_abandonment_rate_30d | checkout_stall_rate_7d | delivery_failure_rate_30d | is_app_uninstalled_30d | coin_to_voucher_rate_30d | notification_receptivity_7d | is_churned_next_14d |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | `U_1001` | 2026-08-01 | 3 | 0.85 | 0.20 | 0.00 | 0.00 | 0 | 0.80 | 0.40 | **0** |
 | `U_1002` | 2026-08-01 | 18 | 0.12 | 1.00 | 1.00 | 0.50 | 0 | 0.00 | 0.02 | **1** |
 | `U_1003` | 2026-08-01 | 25 | 0.00 | 0.00 | 0.00 | 1.00 | 1 | 0.00 | 0.00 | **1** |
