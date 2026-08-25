@@ -52,6 +52,7 @@ Indicators are categorized from highest direct signal strength to secondary and 
 | **Checkout Stall Rate** | Tier 1: Core | `1 - (Purchases in 7d / Checkout Starts in 7d)` | `purchase`, `cart_proceed_to_checkout` | Percentage of recent checkout attempts that failed to finish as a completed order. |
 | **Spend Velocity (Order Value Drift)** | Tier 2: Secondary | `Total Spend in 7d / (Total Spend in 30d / 4)` | Order Info (`net_amount_paid`) | Measures whether weekly spending is slowing down compared to the user's monthly average. |
 | **Browse Breadth** | Tier 2: Secondary | `(Product Views in 7d + List Views in 7d) / Total Sessions in 7d` | `view_item`, `view_item_list`, `session_start` | Measures exploration depth per visit; shallow visits signal fading user interest. |
+| **Product Engagement Decay Ratio** | Tier 2: Secondary | `(Product Views in 7d + List Views in 7d) / T(Product Views in 30d + List Views in 30d) ` | `view_item`, `view_item_list`, `session_start` | Measures exploration  shallow visits signal fading user interest. |
 | **App Exception Rate** | Tier 3: Edge Case | `Crashes & App Errors in 30d / Total Sessions in 30d` | `app_exception`, `session_start` | Measures crash frequency per visit, identifying technical app instability. |
 
 ## 4. LightGBM Model Implementation Guide
