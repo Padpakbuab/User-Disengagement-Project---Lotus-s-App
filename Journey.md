@@ -53,16 +53,13 @@ Indicators are categorized from highest direct signal strength to secondary and 
 | **Checkout Stall Rate** | Tier 1: Core | `1 - (Purchases in 7d / Checkout Starts in 7d)` | `purchase`, `cart_proceed_to_checkout` | Percentage of recent checkout attempts that failed to convert into completed orders. |
 | **Cart Abandonment Rate** | Tier 1: Core | `1 - (Purchases in 30d / Items Added to Cart in 30d)` | `purchase`, `add_to_cart` | Measures how often items added to the cart are left unpurchased over 30 days. |
 | **Browse Breadth** | Tier 1: Core | `(Product Views in 7d + List Views in 7d) / Total Sessions in 7d` | `view_item`, `view_item_list`, `session_start` | Measures exploration depth per visit; shallow visits signal passive disengagement. |
-| **Notification Receptivity Ratio** | Tier 2: Secondary | `Push Opens in 7d / Push Notifications Received in 7d` | `notification_open`, `notification_receive` | Low rates indicate push notification fatigue before users disable alerts or uninstall. |
 | **Cart Purge Ratio** | Tier 2: Secondary | `(Items Removed + Trash Clicks in 30d) / Items Added to Cart in 30d` | `remove_from_cart`, `trash_icon`, `add_to_cart` | High ratios reflect price sensitivity, high delivery thresholds, or missing item friction. |
 | **Checkout Drop-off Velocity** | Tier 2: Secondary | `Coupons Left at Checkout in 7d / Checkout Starts in 7d` | `checkout_coupon_leave`, `cart_proceed_to_checkout` | Captures users abandoning purchases specifically during coupon selection. |
 | **Coupon Abandonment Rate** | Tier 2: Secondary | `(Vouchers Left + Vouchers Cancelled in 30d) / Vouchers Selected in 30d` | `checkout_coupon_leave`, `coupon_cancel`, `checkout_coupon_select` | Measures voucher friction, such as unmet minimum spend thresholds. |
 | **Coin Redemption Velocity** | Tier 2: Secondary | `Coins Redeemed in 30d / Times Points Enabled in 30d` | `redeem_coins_confirm`, `enable_use_lotuss_point` | Detects users who stop utilizing loyalty points despite having an active point balance. |
 | **Coin-to-Voucher Utilization Rate** | Tier 2: Secondary | `Coins Redeemed in 30d / Coupons Applied in 30d` | `redeem_coins_confirm`, `coupon_apply` | Checks if loyalty coins are actively combined with regular discount vouchers. |
-| **Push Dismiss Ratio** | Tier 3: Tertiary | `Push Dismissals in 7d / Push Notifications Received in 7d` | `notification_dismiss`, `notification_receive` | Tracks frequency of users swiping away notifications without reading. |
-| **In-App Message Dismiss Rate** | Tier 3: Tertiary | `Pop-ups Dismissed in 30d / Pop-ups Shown in 30d` | `fiam_dismiss`, `fiam_impression`, `firebase_in_app_message_dismiss`, `firebase_in_app_message_impression` | Reflects in-app banner fatigue and reflexive pop-up dismissal. |
-| **App Exception Rate** | Tier 3: Edge Case | `Crashes & App Errors in 30d / Total Sessions in 30d` | `app_exception`, `session_start` | Measures crash frequency per visit, identifying involuntary technical churn. |
-| **Refund Propensity** | Tier 3: Edge Case | `Refunds in 30d / Purchases in 30d` | `refund`, `purchase` | Tracks post-purchase order dissatisfaction. |
+| **App Exception Rate(flags)** | Tier 3: Edge Case | `Crashes & App Errors in 30d / Total Sessions in 30d` | `app_exception`, `session_start` | Measures crash frequency per visit, identifying involuntary technical churn. |
+| **Refund Propensity(flags)** | Tier 3: Edge Case | `Refunds in 30d / Purchases in 30d` | `refund`, `purchase` | Tracks post-purchase order dissatisfaction. |
 
 ## 4. LightGBM Model Implementation Guide
 
