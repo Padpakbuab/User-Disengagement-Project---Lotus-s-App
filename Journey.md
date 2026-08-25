@@ -58,26 +58,69 @@ Indicators are categorized from highest direct signal strength to secondary and 
 
 ## 4. LightGBM Model Implementation Guide
 
-Follow these 4 core steps to train, validate, and interpret the churn model:
+Follow these 4 core steps to train, validate, and interpret the active user churn prediction model using the finalized feature set:
 
-1. **Format Features & Handle Imbalance:**
-   * Convert categorical features (`account_tier`, `device_os`, `home_store_id`) directly to `category` dtype.
-   * Calculate positive class weighting: `scale_pos_weight = total_negative_users / total_churned_users`.
+### Step 1: Feature Matrix & Imbalance Setup
+* **Feature Selection (10 Predictors):**
+  * *Recency Baselines:* `days_since_last_session`, `days_since_last_purchase`
+  * *Digital & Catalog Velocity:* `engagement_decay_ratio`, `browse_breadth_7d`, `product_engagement_decay_ratio`
+  * *Funnel & Spend:* `checkout_stall_rate_7d`, `spend_velocity_7_vs_30`
+  * *Friction & Dissatisfaction:* `user_dissatisfaction_service_count_30d`, `is_app_uninstalled_30d`, `app_exception_rate_30d`
+* **Target Label:** `is_churned_next_14d` (Binary: `1` for churned, `0` for retained).
+* **Imbalance Handling:** Active users dropping off are a minority class. Set positive weighting dynamically:
+  $$\text{scale\_pos\_weight} = \frac{\text{count}(\text{retained\_users})}{\text{count}(\text{churned\_users})}$$
 
-2. **Configure Baseline Hyperparameters:**
-   * `objective = 'binary'`
-   * `boosting_type = 'gbdt'`
-   * `learning_rate = 0.03`
-   * `num_leaves = 31`
-   * `max_depth = 6`
-   * `min_child_samples = 50`
-   * `subsample = 0.8` (bagging fraction)
-   * `colsample_bytree = 0.8` (feature fraction)
+---
 
-3. **Train with Early Stopping:**
-   * Fit the model using an out-of-time validation snapshot (e.g., train on Month 1, validate on Month 2).
-   * Monitor evaluation metrics: `eval_metric = ['average_precision', 'auc']` with `stopping_rounds = 50`.
+### Step 2: Baseline Hyperparameters & Configuration
 
-4. **Evaluate & Explain Risk Drivers:**
-   * Evaluate ranking performance using **PR-AUC (Average Precision)** and **Precision@Top 10%**.
-   * Run `shap.TreeExplainer(model)` on high-risk users to output the top 3 contributing friction factors per customer for CRM targeting.
+| Parameter | Recommended Value | Purpose |
+| :--- | :--- | :--- |
+| `objective` | `'binary'` | Standard log-loss for binary churn classification. |
+| `boosting_type` | `'gbdt'` | Gradient Boosted Decision Trees. |
+| `learning_rate` | `0.03` | Conservative step size to generalize across seasonality. |
+| `num_leaves` | `31` | Controls tree complexity (kept low to prevent overfitting on ratios). |
+| `max_depth` | `6` | Limits tree depth. |
+| `min_child_samples` | `50` | Prevents leaves from isolating single outlier users or extreme ratios. |
+| `subsample` | `0.8` | Randomly samples 80% of rows per tree to reduce variance. |
+| `colsample_bytree` | `0.8` | Randomly samples 80% of features per tree to prevent dominant collinearity. |
+| `scale_pos_weight` | `neg_count / pos_count` | Re-weights churn instances to account for class imbalance. |
+
+---
+
+### Step 3: Out-of-Time Training & Early Stopping
+
+Train on a historical snapshot ($T_0$) and evaluate on a separate future snapshot ($T_1$) to prevent temporal data leakage:
+
+```python
+import lightgbm as lgb
+from sklearn.metrics import average_precision_score, roc_auc_score
+
+# 1. Split Data by Snapshot Date (Out-of-Time Validation)
+X_train, y_train = train_df[features], train_df['is_churned_next_14d']
+X_valid, y_valid = valid_df[features], valid_df['is_churned_next_14d']
+
+# 2. Compute Class Weighting
+pos_weight = (len(y_train) - y_train.sum()) / y_train.sum()
+
+# 3. Initialize and Train Model
+model = lgb.LGBMClassifier(
+    objective='binary',
+    boosting_type='gbdt',
+    n_estimators=1000,
+    learning_rate=0.03,
+    num_leaves=31,
+    max_depth=6,
+    min_child_samples=50,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    scale_pos_weight=pos_weight,
+    random_state=42
+)
+
+model.fit(
+    X_train, y_train,
+    eval_set=[(X_valid, y_valid)],
+    eval_metric=['average_precision', 'auc'],
+    callbacks=[lgb.early_stopping(stopping_rounds=50, verbose=True)]
+)
