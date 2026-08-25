@@ -1,17 +1,6 @@
 # User-Disengagement-Project---Lotus-s-App
 !!Confidential Data Source!! This is just a journey of my research
 
-Step 1: Defining Data
-
-Look into Lotus's App Data bucket and see what I can play with.
-
-1.1 Look into Customer Journey 
-
-Key Event:
-
-App Open > App usage > App Leave 
-
-
 
 # Lotus's Active User Disengagement & Churn Prediction
 
@@ -74,3 +63,29 @@ Indicators are categorized from highest direct signal strength to secondary and 
 | **In-App Message Dismiss Rate** | Tier 3: Tertiary | `Pop-ups Dismissed in 30d / Pop-ups Shown in 30d` | `fiam_dismiss`, `fiam_impression`, `firebase_in_app_message_dismiss`, `firebase_in_app_message_impression` | Reflects in-app banner fatigue and reflexive pop-up dismissal. |
 | **App Exception Rate** | Tier 3: Edge Case | `Crashes & App Errors in 30d / Total Sessions in 30d` | `app_exception`, `session_start` | Measures crash frequency per visit, identifying involuntary technical churn. |
 | **Refund Propensity** | Tier 3: Edge Case | `Refunds in 30d / Purchases in 30d` | `refund`, `purchase` | Tracks post-purchase order dissatisfaction. |
+
+## 4. LightGBM Model Implementation Guide
+
+Follow these 4 core steps to train, validate, and interpret the churn model:
+
+1. **Format Features & Handle Imbalance:**
+   * Convert categorical features (`account_tier`, `device_os`, `home_store_id`) directly to `category` dtype.
+   * Calculate positive class weighting: `scale_pos_weight = total_negative_users / total_churned_users`.
+
+2. **Configure Baseline Hyperparameters:**
+   * `objective = 'binary'`
+   * `boosting_type = 'gbdt'`
+   * `learning_rate = 0.03`
+   * `num_leaves = 31`
+   * `max_depth = 6`
+   * `min_child_samples = 50`
+   * `subsample = 0.8` (bagging fraction)
+   * `colsample_bytree = 0.8` (feature fraction)
+
+3. **Train with Early Stopping:**
+   * Fit the model using an out-of-time validation snapshot (e.g., train on Month 1, validate on Month 2).
+   * Monitor evaluation metrics: `eval_metric = ['average_precision', 'auc']` with `stopping_rounds = 50`.
+
+4. **Evaluate & Explain Risk Drivers:**
+   * Evaluate ranking performance using **PR-AUC (Average Precision)** and **Precision@Top 10%**.
+   * Run `shap.TreeExplainer(model)` on high-risk users to output the top 3 contributing friction factors per customer for CRM targeting.
