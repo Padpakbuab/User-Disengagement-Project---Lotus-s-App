@@ -28,18 +28,13 @@ This document outlines the testing strategy, operational roadmap, data schema, a
 * **Evaluation:** Compare 14-day retention rates between groups to measure direct business lift.
 
 ---
+## 2. Data Table Preview
 
-## 2. Data Schema & Entity Scope
-
-To build the predictive pipeline, extract and join the following five data entities using `user_id` as the primary key:
-
-| Entity / Table | Granularity | Required Columns / Fields (Mapped to Lotus's GA4 & POS) | Purpose & Description |
-| :--- | :--- | :--- | :--- |
-| **1. User Profile Dimension** | 1 row per `user_id` | • `user_id`<br>• `signup_date`<br>• `home_store_id` (Preferred store branch)<br>• `primary_delivery_province` / `postcode`<br>• `opt_in_push_notification` (Boolean)<br>• `account_tier` (My Lotus's Member tier) | Controls for customer tenure, geography, channel permissions, and member segmentation. |
-| **2. App Clickstream & Navigation** | 1 row per event log | • `user_id`<br>• `session_id`<br>• `event_timestamp`<br>• `event_name` (`session_start`, `screen_view`, `view_item_list`, `view_item`, `product_detail_related`, `homepage_icon`, `footer_menu`, `search_result_filter_tab`)<br>• `device_os` (iOS / Android)<br>• `app_version` | Captures digital velocity, browse breadth, search behavior, and navigation degradation. |
-| **3. Omnichannel Transactions & Funnel** | 1 row per transaction / checkout event | • `user_id`<br>• `order_id` (or `session_id` for checkout funnel)<br>• `event_timestamp`<br>• `funnel_event` (`add_to_cart`, `remove_from_cart`, `header_cart_icon`, `cart_proceed_to_checkout`, `place_selected_confirm`, `purchase`, `refund`)<br>• `channel` (`ONLINE_DELIVERY`, `CLICK_COLLECT`, `IN_STORE_POS`)<br>• `order_status` (`COMPLETED`, `CANCELLED`, `REFUNDED`)<br>• `net_amount_paid`<br>• `product_category_id` | Tracks spend decay, cart abandonment, fulfillment selection drop-offs, and store-to-online switching. |
-| **4. Loyalty & Promotions (My Lotus's)** | 1 row per reward interaction | • `user_id`<br>• `event_timestamp`<br>• `loyalty_event` (`mycoupon_category`, `coupon_apply`, `coupon_card`, `enable_use_lotuss_point`, `redeem_coins_button`, `redeem_coins_confirm`, `lotuss_privileges`, `store_privileges`)<br>• `points_balance`<br>• `coupon_discount_value` | Measures promotion sensitivity, Lotus's Coins redemption activity, and voucher fatigue. |
-| **5. Friction, Messaging & Telemetry** | 1 row per friction / alert event | • `user_id`<br>• `event_timestamp`<br>• `friction_event` (`app_exception`, `forced_logout`, `app_clear_data`, `app_remove`, `trash_icon`, `place_selected_cancel`, `checkout_coupon_leave`, `coupon_cancel`, `notification_receive`, `notification_open`, `notification_dismiss`, `fiam_impression`, `fiam_dismiss`)<br>• `error_code` / `screen_fragment` (`PageNotFoundFragment`, etc.) | Detects involuntary churn drivers, technical crashes, push notification burnout, and UX roadblocks. |
+| user_id | snapshot_date | days_since_last_session | engagement_decay_ratio | cart_abandonment_rate_30d | checkout_stall_rate_7d | delivery_failure_rate_30d | is_app_uninstalled_30d | coin_to_voucher_rate_30d | notification_receptivity_7d | account_tier | is_churned_next_14d |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `U_1001` | 2026-08-01 | 3 | 0.85 | 0.20 | 0.00 | 0.00 | 0 | 0.80 | 0.40 | Gold | **0** |
+| `U_1002` | 2026-08-01 | 18 | 0.12 | 1.00 | 1.00 | 0.50 | 0 | 0.00 | 0.02 | Member | **1** |
+| `U_1003` | 2026-08-01 | 25 | 0.00 | 0.00 | 0.00 | 1.00 | 1 | 0.00 | 0.00 | Silver | **1** |
 
 ---
 
@@ -47,19 +42,23 @@ To build the predictive pipeline, extract and join the following five data entit
 
 Indicators are categorized from highest direct signal strength to secondary and edge-case signals.
 
-| Feature Name | Priority Tier | Plain Math Formula | Underlying GA4 Events | What It Means (Simple Explanation) |
+## Derived Behavioral Feature Definitions
+
+| Feature Name | Priority Tier | Plain Math Formula | Underlying Events & Logs | What It Means (Simple Explanation) |
 | :--- | :--- | :--- | :--- | :--- |
-| **Engagement Decay Ratio** | Tier 1: Core | `(Screen Views in 7d / 7) / (Screen Views in 30d / 30)` | `screen_view` | Compares recent daily browsing to the monthly baseline. Values $< 1.0$ indicate declining app visits. |
-| **Checkout Stall Rate** | Tier 1: Core | `1 - (Purchases in 7d / Checkout Starts in 7d)` | `purchase`, `cart_proceed_to_checkout` | Percentage of recent checkout attempts that failed to convert into completed orders. |
+| **Engagement Decay Ratio** | Tier 1: Core | `(Screen Views in 7d / 7) / (Screen Views in 30d / 30)` | `screen_view` | Compares recent daily browsing to the monthly baseline. Values $< 1.0$ indicate declining app activity. |
+| **Delivery Failure Rate** | Tier 1: Core | `Failed Deliveries in 30d / Total Deliveries in 30d` | Delivery Status Logs (`FAILED`, `CANCELLED_BY_RIDER`) | Measures fulfillment issues; customers experiencing failed deliveries are at immediate risk of leaving. |
+| **Return / Refund Propensity** | Tier 1: Core | `(Refunds + Returned Orders in 30d) / Total Orders in 30d` | `refund`, Order Status (`RETURNED`) | Spikes in returned items reflect product dissatisfaction and drive churn. |
+| **App Uninstall Flag** | Tier 1: Core | `1 if app uninstalled in 30d else 0` | `app_remove`, OS Uninstall Callback | Direct signal of churn; indicates the user deleted the app. |
+| **Checkout Stall Rate** | Tier 1: Core | `1 - (Purchases in 7d / Checkout Starts in 7d)` | `purchase`, `cart_proceed_to_checkout` | Percentage of recent checkout attempts that failed to finish as a completed order. |
 | **Cart Abandonment Rate** | Tier 1: Core | `1 - (Purchases in 30d / Items Added to Cart in 30d)` | `purchase`, `add_to_cart` | Measures how often items added to the cart are left unpurchased over 30 days. |
-| **Browse Breadth** | Tier 1: Core | `(Product Views in 7d + List Views in 7d) / Total Sessions in 7d` | `view_item`, `view_item_list`, `session_start` | Measures exploration depth per visit; shallow visits signal passive disengagement. |
+| **Spend Velocity (Order Value Drift)** | Tier 2: Secondary | `Total Spend in 7d / (Total Spend in 30d / 4)` | Order Info (`net_amount_paid`) | Measures whether weekly spending is slowing down compared to the user's monthly average. |
+| **Browse Breadth** | Tier 2: Secondary | `(Product Views in 7d + List Views in 7d) / Total Sessions in 7d` | `view_item`, `view_item_list`, `session_start` | Measures exploration depth per visit; shallow visits signal fading user interest. |
+| **Notification Receptivity Ratio** | Tier 2: Secondary | `Push Opens in 7d / Push Notifications Received in 7d` | `notification_open`, `notification_receive` | Low rates indicate push notification fatigue before users disable alerts. |
 | **Cart Purge Ratio** | Tier 2: Secondary | `(Items Removed + Trash Clicks in 30d) / Items Added to Cart in 30d` | `remove_from_cart`, `trash_icon`, `add_to_cart` | High ratios reflect price sensitivity, high delivery thresholds, or missing item friction. |
-| **Checkout Drop-off Velocity** | Tier 2: Secondary | `Coupons Left at Checkout in 7d / Checkout Starts in 7d` | `checkout_coupon_leave`, `cart_proceed_to_checkout` | Captures users abandoning purchases specifically during coupon selection. |
-| **Coupon Abandonment Rate** | Tier 2: Secondary | `(Vouchers Left + Vouchers Cancelled in 30d) / Vouchers Selected in 30d` | `checkout_coupon_leave`, `coupon_cancel`, `checkout_coupon_select` | Measures voucher friction, such as unmet minimum spend thresholds. |
-| **Coin Redemption Velocity** | Tier 2: Secondary | `Coins Redeemed in 30d / Times Points Enabled in 30d` | `redeem_coins_confirm`, `enable_use_lotuss_point` | Detects users who stop utilizing loyalty points despite having an active point balance. |
 | **Coin-to-Voucher Utilization Rate** | Tier 2: Secondary | `Coins Redeemed in 30d / Coupons Applied in 30d` | `redeem_coins_confirm`, `coupon_apply` | Checks if loyalty coins are actively combined with regular discount vouchers. |
-| **App Exception Rate(flags)** | Tier 3: Edge Case | `Crashes & App Errors in 30d / Total Sessions in 30d` | `app_exception`, `session_start` | Measures crash frequency per visit, identifying involuntary technical churn. |
-| **Refund Propensity(flags)** | Tier 3: Edge Case | `Refunds in 30d / Purchases in 30d` | `refund`, `purchase` | Tracks post-purchase order dissatisfaction. |
+| **Coupon Abandonment Rate** | Tier 2: Secondary | `(Vouchers Left + Vouchers Cancelled in 30d) / Vouchers Selected in 30d` | `checkout_coupon_leave`, `coupon_cancel`, `checkout_coupon_select` | Measures voucher friction, such as unmet minimum spend thresholds. |
+| **App Exception Rate** | Tier 3: Edge Case | `Crashes & App Errors in 30d / Total Sessions in 30d` | `app_exception`, `session_start` | Measures crash frequency per visit, identifying technical app instability. |
 
 ## 4. LightGBM Model Implementation Guide
 
